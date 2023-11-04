@@ -19,6 +19,4 @@ This way the marker is placed in more plausible location. It's also possible to 
 Leaflet dynamic markers loading is based on: https://stackblitz.com/edit/react-kcegra?file=index.html (rewritten into functional components).
 
 demo:
-<video src="https://user-images.githubusercontent.com/110261550/226462573-3ba2d1b3-c88a-4515-929b-00161ed9650a.mp4" />
-
 [https://user-images.githubusercontent.com/110261550/226462573-3ba2d1b3-c88a-4515-929b-00161ed9650a.mp4](https://github-production-user-asset-6210df.s3.amazonaws.com/110261550/226462573-3ba2d1b3-c88a-4515-929b-00161ed9650a.mp4)
