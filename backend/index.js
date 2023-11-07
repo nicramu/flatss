@@ -17,9 +17,9 @@ const port = 3000
 const token = "123"
 
 const streetData = [
-  './overpass_data/streets_wroclaw_overpass-turbo.json',
-  './overpass_data/streets_krakow_overpass-turbo.json',
-  './overpass_data/streets_gdansk_overpass-turbo.json'
+  '/flatss/overpass_data/streets_wroclaw_overpass-turbo.json',
+  '/flatss/overpass_data/streets_krakow_overpass-turbo.json',
+  '/flatss/overpass_data/streets_gdansk_overpass-turbo.json'
 ]
 
 const urls = [
@@ -28,7 +28,7 @@ const urls = [
   'https://www.olx.pl/d/nieruchomosci/mieszkania/wynajem/gdansk/?search[order]=created_at%3Adesc'
 ]
 
-let scheduled = cron.schedule('0 2 * * *', async () => {
+let scheduled = cron.schedule('0 4 * * *', async () => {
   console.log('running cron')
   await start()
 }, {
@@ -43,39 +43,38 @@ app.use(cors());
 http.createServer(app).listen(port);
 
 app.get('/get', async (req, res) => {
-    if (req.query.token && req.query.token === token) {
-    fs.mkdir("./build/fetched_data/images/", (err) => {
-      if (err) {
-        return console.error(err);
-      }
-      console.log('Directory created successfully!');
-    })
+  if (req.query.token && req.query.token === token) {
 
-    let processed = await start()
+    let processedRes = await start()
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
     res.setHeader('Access-Control-Max-Age', 2592000); // 30 days
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     //res.end(JSON.stringify(data));
-    res.end(JSON.stringify(processed));
+    res.end(JSON.stringify(processedRes));
   } else {
     console.error("no token given")
     res.end("all good")
   }
-  })
+})
 
 
 async function start() {
 
-  //delete images
-  const directory = "./build/fetched_data/images/"
-  fs.readdir(directory, (err, files) => {
-    if (err) throw err;
+  //add folder
+  fs.mkdir("/flatss/build/fetched_data/images/", (err) => {
+    if (err) {
+      return console.error(err);
+    }
+    console.log('Directory created successfully!');
+  })
 
+  //delete images
+  const directory = "/flatss/build/fetched_data/images/"
+  fs.readdir(directory, (err, files) => {
     for (const file of files) {
       fs.unlink(path.join(directory, file), (err) => {
-        if (err) throw err;
       });
     }
   });
@@ -88,7 +87,7 @@ async function start() {
   }
 
   //write to file
-  fs.writeFileSync("./build/fetched_data/data_original.json", JSON.stringify(merged), (err) => {
+  fs.writeFileSync("/flatss/build/fetched_data/data_original.json", JSON.stringify(merged), (err) => {
     if (err) { console.log(err); }
   });
   console.log("Fetched data file written successfully")
@@ -97,13 +96,13 @@ async function start() {
   let processed = await processStatic()
 
   //write to file
-  fs.writeFileSync("./build/fetched_data/data_processed.json", JSON.stringify(processed), (err) => {
+  fs.writeFileSync("/flatss/build/fetched_data/data_processed.json", JSON.stringify(processed), (err) => {
     if (err) { console.log(err); }
   });
   console.log("Processed data file written successfully")
 
   //last scrap date
-  fs.writeFileSync("./build/fetched_data/scrap_date.json", '"' + new Date().toLocaleString('pl-PL') + '"', (err) => {
+  fs.writeFileSync("/flatss/build/fetched_data/scrap_date.json", '"' + new Date().toLocaleString('pl-PL') + '"', (err) => {
     if (err) { console.log(err); }
   });
   console.log("Scrap date file written successfully")
@@ -149,9 +148,9 @@ async function scrap(url) {
       async function downloadimg(i) {
         if (jsondata.listing.listing.ads[i].photos[0]) {
           filename = Date.now().toString(36)
-          saveto = './build/fetched_data/images/' + filename + '.jpg'
+          saveto = '/flatss/build/fetched_data/images/' + filename + '.jpg'
           filepath = './fetched_data/images/' + filename + '.jpg'
-          const readStream = got.stream(jsondata.listing.listing.ads[i].photos[0], { throwHttpErrors: false })
+          const readStream = got.stream(jsondata.listing.listing.ads[i].photos[0] + ";q=50", { throwHttpErrors: false })
           await pipeline(readStream, fs.createWriteStream(saveto))
           return filepath
         }
@@ -212,9 +211,9 @@ async function scrap(url) {
         async function downloadimg(i) {
           if (jsondata.listing.listing.ads[i].photos[0]) {
             filename = Date.now().toString(36)
-            saveto = './build/fetched_data/images/' + filename + '.jpg'
+            saveto = '/flatss/build/fetched_data/images/' + filename + '.jpg'
             filepath = './fetched_data/images/' + filename + '.jpg'
-            const readStream = got.stream(jsondata.listing.listing.ads[i].photos[0], { throwHttpErrors: false })
+            const readStream = got.stream(jsondata.listing.listing.ads[i].photos[0] + ";q=50", { throwHttpErrors: false })
             await pipeline(readStream, fs.createWriteStream(saveto))
             return filepath
           }
@@ -254,26 +253,27 @@ async function scrap(url) {
 }
 
 async function processStatic() {
+  console.log("processing scrapped with overpass data start")
   //json with street names and coordinates per city
   let streetDataCurrent = ''
 
-  const data = require('./build/fetched_data/data_original.json')
+  const data = JSON.parse(fs.readFileSync('/flatss/build/fetched_data/data_original.json'))
   let incl = []
   for (let i = 0; i < data.length; i++) {
 
     switch (data[i].city) {
       case 'wroclaw':
-        streetDataCurrent = require(streetData[0])
+        streetDataCurrent = JSON.parse(fs.readFileSync(streetData[0]))
         break;
       case 'krakow':
-        streetDataCurrent = require(streetData[1])
+        streetDataCurrent = JSON.parse(fs.readFileSync(streetData[1]))
         break;
       case 'gdansk':
-        streetDataCurrent = require(streetData[2])
+        streetDataCurrent = JSON.parse(fs.readFileSync(streetData[2]))
         break;
       default:
         console.log("no city info found")
-        streetDataCurrent = require(streetData[0])
+        streetDataCurrent = JSON.parse(fs.readFileSync(streetData[0]))
     }
 
     if (data[i].description && data[i].title && !data[i].geo.isAccurate) { //if geo.isAccurate == true skip processing
@@ -370,6 +370,8 @@ async function processStatic() {
     }
     );
   }
+
+  console.log("processing scrapped with overpass data stop")
 
   return merged2
 }
